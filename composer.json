@@ -1,0 +1,40 @@
+{
+    "name": "threedpcadmin-admin/laravel-file-manager",
+    "description": "File manager for 3dpc-client",
+    "keywords": [
+        "laravel",
+        "file",
+        "manager"
+    ],
+    "authors": [
+        {
+            "name": "threedpcadmin",
+            "email": "proteas988@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "homepage": "https://github.com/Nur988/laravel-file-manager-2.5.4",
+    "license": "MIT",
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.1.0",
+        "ext-zip": "*",
+        "ext-json": "*",
+        "laravel/framework": "^5.5|^6.0|^7.0|^8.0",
+        "league/flysystem": "^1.0",
+        "intervention/image": "^2.4",
+        "intervention/imagecache": "^2.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "threedpcadmin\\LaravelFileManager\\": "src"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "threedpcadmin\\LaravelFileManager\\FileManagerServiceProvider"
+            ]
+        }
+    }
+}
