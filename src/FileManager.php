@@ -173,6 +173,11 @@ class FileManager
                 $file,
                 $fileOriginalName."|ADMIN.".$fileExtensionName
             );
+          Storage::disk("unity")->putFileAs(
+                $path,
+                $file,
+                $fileOriginalName."|ADMIN.".$fileExtensionName
+            );
         }
 
         // If the some file was not uploaded
