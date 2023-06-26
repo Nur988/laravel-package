@@ -12,6 +12,9 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Arr;
 use Storage;
 use Image;
+use Log;
+use Aws\S3\S3Client;
+use App\Models\Project;
 
 class FileManager
 {
@@ -63,7 +66,8 @@ class FileManager
         foreach ($this->configRepository->getDiskList() as $disk) {
             if (array_key_exists($disk, config('filesystems.disks'))) {
                 $config['disks'][$disk] = Arr::only(
-                    config('filesystems.disks')[$disk], ['driver']
+                    config('filesystems.disks')[$disk],
+                    ['driver']
                 );
             }
         }
@@ -91,7 +95,43 @@ class FileManager
     public function content($disk, $path)
     {
         // get content for the selected directory
+        // get content for the selected directory
         $content = $this->getContent($disk, $path);
+
+        $s3Client = new S3Client([
+            'version' => 'latest',
+            'region' => env("AWS_DEFAULT_REGION"),
+            'credentials' => [
+                'key' => env('AWS_ACCESS_KEY_ID'),
+                'secret' => env("AWS_SECRET_ACCESS_KEY"),
+            ],
+        ]);
+
+        $metadata = [];
+
+        if ($path) {
+            $objects = $s3Client->listObjects([
+                'Bucket' => env("AWS_BUCKET"),
+                'Prefix' => $path, // Include the prefix (directory path)
+            ]);
+
+            foreach ($objects['Contents'] as $object) {
+                $result = $s3Client->headObject([
+                    'Bucket' => env("AWS_BUCKET"),
+                    'Key' => $object['Key'],
+                ]);
+                $fileMetadata = $result->get('Metadata');
+                $metadata[$object['Key']] = $fileMetadata;
+            }
+        }
+
+        Log::debug($metadata);
+        foreach ($content['files'] as &$file) {
+            $filePath = $file['path'];
+            $file['metadata'] = isset($metadata[$filePath]) ? $metadata[$filePath] : [];
+        }
+
+
 
         return [
             'result'      => [
@@ -134,21 +174,24 @@ class FileManager
      *
      * @return array
      */
-    public function upload($disk, $path, $files, $overwrite)
+    public function upload($disk, $path, $files, $overwrite, $metadata)
     {
         $fileNotUploaded = false;
 
         foreach ($files as $file) {
             // skip or overwrite files
-            if (!$overwrite
+            $fileContents = file_get_contents(Storage::disk($disk)->path($file));
+            if (
+                !$overwrite
                 && Storage::disk($disk)
-                    ->exists($path.'/'.$file->getClientOriginalName())
+                ->exists($path . '/' . $file->getClientOriginalName())
             ) {
                 continue;
             }
 
             // check file size if need
-            if ($this->configRepository->getMaxUploadFileSize()
+            if (
+                $this->configRepository->getMaxUploadFileSize()
                 && $file->getSize() / 1024 > $this->configRepository->getMaxUploadFileSize()
             ) {
                 $fileNotUploaded = true;
@@ -156,7 +199,8 @@ class FileManager
             }
 
             // check file type if need
-            if ($this->configRepository->getAllowFileTypes()
+            if (
+                $this->configRepository->getAllowFileTypes()
                 && !in_array(
                     $file->getClientOriginalExtension(),
                     $this->configRepository->getAllowFileTypes()
@@ -165,14 +209,57 @@ class FileManager
                 $fileNotUploaded = true;
                 continue;
             }
-            $fileOriginalName = pathinfo( $file->getClientOriginalName(), PATHINFO_FILENAME);
-            $fileExtensionName=$file->getClientOriginalExtension();
+            $fileOriginalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $fileExtensionName = $file->getClientOriginalExtension();
             // overwrite or save file
-          Storage::disk($disk)->putFileAs(
+            $path = Storage::disk($disk)->putFileAs(
                 $path,
                 $file,
-                $fileOriginalName."|ADMIN.".$fileExtensionName
+                $fileOriginalName . "|ADMIN." . $fileExtensionName
             );
+            $s3 = new S3Client([
+                'version' => 'latest',
+                'region' => env('AWS_DEFAULT_REGION'),
+                'credentials' => [
+                    'key' => env('AWS_ACCESS_KEY_ID'),
+                    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+                ],
+            ]);
+            $metadata = json_decode($metadata, true);
+            if ($metadata["is_admin"]==false)
+            {
+                $metadata["is_admin"]="false";
+            }
+            elseif($metadata["is_admin"]==true)
+            {
+                $metadata["is_admin"]="true";
+            }
+
+            $existingMetadata = $s3->headObject([
+                'Bucket' => env('AWS_BUCKET'),
+                'Key' => $path,
+            ])->get('Metadata');
+            Log::debug( $existingMetadata);
+    
+          
+    
+            // Merge existing metadata with new metadata
+            $metadata = array_merge($existingMetadata, $metadata);
+            $project=Project::where("project_id",$metadata['project_id'])->first();
+            if($project)
+            {
+                $metadata['step']=$project->step;
+                $metadata['model_type']=$project->model_type;
+            }
+
+            Log::debug($metadata);
+           
+            $s3->putObject([
+                'Bucket' => env('AWS_BUCKET'),
+                'Key' => $path,
+                'Body'=>$file,
+                'Metadata' => $metadata
+            ]);
         }
 
         // If the some file was not uploaded
