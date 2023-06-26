@@ -5,7 +5,9 @@ namespace threedpcadmin\LaravelFileManager\Events;
 use Illuminate\Http\Request;
 
 class FilesUploaded
-{
+{   
+
+      private $metadata;
     /**
      * @var string
      */
@@ -37,6 +39,7 @@ class FilesUploaded
         $this->path = $request->input('path');
         $this->files = $request->file('files');
         $this->overwrite = $request->input('overwrite');
+        $this->metadata=$request->input('metadata');
     }
 
     /**

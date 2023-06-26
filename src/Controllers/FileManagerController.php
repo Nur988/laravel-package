@@ -122,7 +122,9 @@ class FileManagerController extends Controller
             $request->input('disk'),
             $request->input('path'),
             $request->file('files'),
-            $request->input('overwrite')
+            $request->input('overwrite'),
+            $request->input('metadata'),
+
         );
 
         event(new FilesUploaded($request));
