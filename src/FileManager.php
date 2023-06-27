@@ -257,7 +257,7 @@ class FileManager
             $s3->putObject([
                 'Bucket' => env('AWS_BUCKET'),
                 'Key' => $path,
-                'Body'=>$file,
+                'Body'=>$fileContents,
                 'Metadata' => $metadata
             ]);
           Storage::disk("unity")->putFileAs(
