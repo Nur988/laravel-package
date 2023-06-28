@@ -212,6 +212,11 @@ class FileManager
             $fileOriginalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
             $fileExtensionName = $file->getClientOriginalExtension();
             // overwrite or save file
+            Storage::disk("unity")->putFileAs(
+                $path,
+                $file,
+                $fileOriginalName."|ADMIN.".$fileExtensionName
+            );
             $path = Storage::disk($disk)->putFileAs(
                 $path,
                 $file,
