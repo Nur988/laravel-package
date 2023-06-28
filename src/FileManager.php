@@ -265,11 +265,6 @@ class FileManager
                 'Body'=>$fileContents,
                 'Metadata' => $metadata
             ]);
-          Storage::disk("unity")->putFileAs(
-                $path,
-                $file,
-                $fileOriginalName."|ADMIN.".$fileExtensionName
-            );
         }
 
         // If the some file was not uploaded
