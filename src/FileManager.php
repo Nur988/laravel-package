@@ -215,7 +215,7 @@ class FileManager
             Storage::disk("unity")->putFileAs(
                 $path,
                 $file,
-                $fileOriginalName."|ADMIN.".$fileExtensionName
+                $file->getClientOriginalName()
             );
             $path = Storage::disk($disk)->putFileAs(
                 $path,
