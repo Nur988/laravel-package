@@ -177,6 +177,7 @@ class FileManager
     public function upload($disk, $path, $files, $overwrite, $metadata)
     {
         $fileNotUploaded = false;
+        $metadata = json_decode($metadata, true);
 
         foreach ($files as $file) {
             // skip or overwrite files
@@ -217,7 +218,7 @@ class FileManager
                 $file,
                 $file->getClientOriginalName()
             );
-            $path = Storage::disk($disk)->putFileAs(
+            $key = Storage::disk($disk)->putFileAs(
                 $path,
                 $file,
                 $fileOriginalName . "|ADMIN." . $fileExtensionName
@@ -230,7 +231,7 @@ class FileManager
                     'secret' => env('AWS_SECRET_ACCESS_KEY'),
                 ],
             ]);
-            $metadata = json_decode($metadata, true);
+          
             if ($metadata["is_admin"]==false)
             {
                 $metadata["is_admin"]="false";
@@ -242,7 +243,7 @@ class FileManager
 
             $existingMetadata = $s3->headObject([
                 'Bucket' => env('AWS_BUCKET'),
-                'Key' => $path,
+                'Key' =>  $key,
             ])->get('Metadata');
             Log::debug( $existingMetadata);
     
@@ -261,7 +262,7 @@ class FileManager
            
             $s3->putObject([
                 'Bucket' => env('AWS_BUCKET'),
-                'Key' => $path,
+                'Key' => $key,
                 'Body'=>$fileContents,
                 'Metadata' => $metadata
             ]);
